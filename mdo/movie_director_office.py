@@ -105,10 +105,17 @@ class MDO_Researcher():
         centralities:list=["degree", "closeness", "betweenness"], replace:bool=True) -> None
         Enrich the data with information about the network of actors across movies.
 
+    research_release_years(
+        movie_titles:list=[], save:bool=False, path:str="mdo/data/release_years.csv", workers:int=5) -> pd.DataFrame
+        Research the release years of the movies in the dataset through webscraping.
+
+    enrich_with_release_year(path:str="mdo/data/release_years.csv", replace:bool=True) -> pd.DataFrame
+        Enrich the dataset with the release years of the movies.
+
     enrich_all(
-        save:bool=False, path:str="mdo/data/enriched_dataset.csv",
-        country:bool=True, actors:bool=True, country_par:dict={}, actors_par:dict={}) -> None
-        Enrich the data with all the available methods. It includes addition of profit as a success metric.
+        save:bool=False, path:str="mdo/data/enriched_dataset.csv", country:bool=True, actors:bool=True,
+        release_year:bool=True, country_par:dict={}, actors_par:dict={}, release_par:dict={}) -> pd.DataFrame
+        Enrich the data with all the available methods.
     """
 
     def __init__(
@@ -581,6 +588,9 @@ class MDO_Statistician(MDO_Researcher):
     get_dist_financials(plot:bool=True) -> pd.DataFrame
         Give summary statistics about the main financials of movies.
 
+    get_dist_scores(plot:bool=True) -> pd.DataFrame
+        See if the IMDB scores are well distributed.
+
     get_correlation(target:str, predictors:list=[], plot:bool=False) -> pd.DataFrame
         Correlation analysis between the target variable and the chosen predictors.
 
@@ -875,7 +885,6 @@ class MDO_Agent(MDO_Researcher):
 
     show_n_neighbors(actor:str, degree:int=1, plot:bool=False) -> List[str]
         Show the neighbors of an actor in the network up to n connections.
-
     """
 
     def __init__(self, **class_arg):
@@ -1061,7 +1070,7 @@ class MDO_Agent(MDO_Researcher):
 
     # ># Method 5:
 
-    def show_n_neighbors(self, actor: str, degree: int = 1, plot: bool = False) -> None:
+    def show_n_neighbors(self, actor: str, degree: int = 1, plot: bool = False) -> list:
         """Show the neighbors of an actor in the network up to n connections.
 
         Parameters
@@ -1130,17 +1139,27 @@ class MDO_Forecaster(MDO_Researcher):
     initiate_models(
         models:list=["DummyRegressor", "LinearRegression", "Lasso", "SVR", "KNeighborsRegressor",
         "RandomForestRegressor", "XGBRegressor", "MLPRegressor"],
-        standard_scaling:bool=True) -> None
+        standard_scaling:bool=True) -> dict
         Initiate the models to be used for prediction.
 
     evaluate_standard_models(
-        cv:int=5, logs:str="logs.csv", rank:str="mse", prefix:str="", verbose:bool=True) -> None
+        cv:int=5, logs:str="logs.csv", rank:str="mse", prefix:str="", verbose:bool=True) -> pd.DataFrame
         Evaluate the performance of the standard models.
 
     evaluate_single_model(
-        model:str, cv:int=5, logs:str="logs.csv", rank:str="mse", prefix:str="", verbose:bool=True) -> None
+        estimator:model, cv:int=5, logs:str="logs.csv", rank:str="mse",
+        name_log:str='', plot_pred:bool=False, scatter_plot:bool=False,
+        verbose:bool=True) -> pd.DataFrame
         Evaluate the performance of a single model.
 
+    get_OLS_significance(
+        backward_elimination:bool=True, alpha:float=0.05, log:bool=True,
+        log_path:str="OLS_logs.csv", log_name:str="OLS",
+        explainable:bool=False, verbose:bool=True) -> dict
+
+    classify_profitable(
+        model:model, X:pd.DataFrame=None, log:bool=True,
+        log_path:str="profitable_classifier.csv", log_name:str="Classifier") -> pd.DataFrame
     """
 
     def __init__(self, pre: str = "mdo/data/pre_release.csv", after: str = "mdo/data/after_release.csv") -> None:
@@ -1211,7 +1230,7 @@ class MDO_Forecaster(MDO_Researcher):
     def initiate_models(self, models: list = [
             "DummyRegressor", "LinearRegression", "Lasso", "SVR", "KNeighborsRegressor",
             "RandomForestRegressor", "XGBRegressor", "MLPRegressor"],
-            standard_scaling: bool = True) -> None:
+            standard_scaling: bool = True) -> dict:
         """Initiate the models to be used for prediction.
 
         Parameters
@@ -1262,7 +1281,7 @@ class MDO_Forecaster(MDO_Researcher):
 
     def evaluate_standard_models(
             self, cv: int = 5, logs: str = "logs.csv", rank: str = "mse",
-            prefix: str = "", verbose: bool = True) -> None:
+            prefix: str = "", verbose: bool = True) -> pd.DataFrame:
         """Evaluate the performance of the standard models.
 
         Parameters
@@ -1328,7 +1347,7 @@ class MDO_Forecaster(MDO_Researcher):
     def evaluate_single_model(
             self, estimator, cv: int = 5, logs: str = "logs.csv", rank: str = "mse",
             name_log: str = "", plot_pred: bool = False, scatter_plot: bool = False,
-            verbose: bool = True) -> None:
+            verbose: bool = True) -> pd.DataFrame:
         """Evaluate the performance of a chosen estimator.
 
         Parameters
@@ -1626,7 +1645,7 @@ class MDO_Forecaster(MDO_Researcher):
     def classify_profitable(
             self, model, X: pd.DataFrame = None,
             log: bool = True, log_path: str = "profit_classifier.csv",
-            log_name: str = "Classifier") -> None:
+            log_name: str = "Classifier") -> pd.DataFrame:
         """Classify the movies as profitable or not.
 
         Parameters
@@ -1670,8 +1689,9 @@ class MDO_Forecaster(MDO_Researcher):
         if log:
             if not os.path.exists(log_path):
                 pd.DataFrame(
-                    columns=["name", "accuracy", "precision",
-                             "recall", "f1", "timestamp"]
+                    columns=[
+                        "name", "accuracy", "precision",
+                        "recall", "f1", "timestamp"]
                 ).to_csv(log_path, index=False)
 
             logs_df = pd.read_csv(log_path)
