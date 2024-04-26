@@ -477,7 +477,7 @@ class MDO_Researcher():
             return dict_output
 
         # Get the movie titles
-        if not movie_titles:
+        if movie_titles is None:
             movie_titles = self.full["movie_title"].head(10).tolist()
 
         dict_output = multiple_windows(movie_titles, workers=workers)
@@ -1347,7 +1347,7 @@ class MDO_Forecaster(MDO_Researcher):
     def evaluate_single_model(
             self, estimator, cv: int = 5, logs: str = "logs.csv", rank: str = "mse",
             name_log: str = "", plot_pred: bool = False, scatter_plot: bool = False,
-            verbose: bool = True) -> pd.DataFrame:
+            seed: int = 0, verbose: bool = True) -> pd.DataFrame:
         """Evaluate the performance of a chosen estimator.
 
         Parameters
@@ -1366,6 +1366,8 @@ class MDO_Forecaster(MDO_Researcher):
             Plot the predictions vs the true values, by default False
         scatter_plot : bool, optional
             Plot the scatter plot of the predictions vs the true values, by default False
+        seed : int, optional
+            Random seed for the train-test split, by default 0
         verbose : bool, optional
             Display the evaluation results, by default True
 
@@ -1424,7 +1426,7 @@ class MDO_Forecaster(MDO_Researcher):
         # Plot the predictions
         if plot_pred or scatter_plot:
             X_train, X_test, y_train, y_test = train_test_split(
-                self.X, self.y, test_size=0.2)
+                self.X, self.y, test_size=0.2, random_state=seed)
             estimator.fit(X_train, y_train)
             y_train = y_train.sort_values()
             X_train = X_train.loc[y_train.index]
@@ -1629,12 +1631,10 @@ class MDO_Forecaster(MDO_Researcher):
 
                 if verbose:
                     print(f"Model '{log_name}' saved in the logs")
-                    display(logs_df.head(5))
 
             else:
                 if verbose:
                     print(f"Model '{log_name}' saved in the logs")
-                    display(logs_df.head(5))
 
             output_dict["Logs"] = logs_df
 
